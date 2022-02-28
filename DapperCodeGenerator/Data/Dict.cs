@@ -12,7 +12,7 @@ static class TypeMapper
         {"binary", "Byte[]"},
         {"bit", "bool"},
         {"char", "string"},
-        {"date", "DateTime"},
+        {"date", "DateTime" },
         {"datetime", "DateTime"},
         {"datetime2", "DateTime"},
         {"datetimeoffset", "DateTimeOffset"},

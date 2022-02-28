@@ -7,11 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="DapperCodeGeneratorTemplate.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="wwwroot\Images\Instruction.png" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Pluralize.NET.Core" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\Templates\" />
   </ItemGroup>
 
 </Project>

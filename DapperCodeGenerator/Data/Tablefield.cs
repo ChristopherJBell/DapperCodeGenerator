@@ -3,10 +3,10 @@
     public class Tablefield
     {
         // Auto-implemented properties.
-        public string Fieldname { get; set; } = null!;
-        public string SQLtype { get; set; } = null!;
-        public string Codetype { get; set; } = null!;
-        public string DBtype { get; set; } = null!;
+        public string Fieldname { get; set; } = String.Empty;
+        public string SQLtype { get; set; } = String.Empty;
+        public string Codetype { get; set; } = String.Empty;
+        public string DBtype { get; set; } = String.Empty;
         public int Length { get; set; }
         public bool IsRequired { get; set; }
 
@@ -15,10 +15,10 @@
 
         }
 
-        public Tablefield(string fieldname, string sqlytpe, string codetype, string dbtype, int length, bool isrequired)
+        public Tablefield(string fieldname, string sqltype, string codetype, string dbtype, int length, bool isrequired)
         {
             this.Fieldname = fieldname;
-            this.SQLtype = sqlytpe;
+            this.SQLtype = sqltype;
             this.Codetype = codetype;
             this.DBtype = dbtype;
             this.Length = length;

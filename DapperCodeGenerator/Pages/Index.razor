@@ -13,13 +13,13 @@
 <li>For best results <strong>make the first field the primary key</strong>, and include a <strong>Bit field named IsActive</strong>.</li>
 
 <div class="controls">
-    <EditForm Model="@codetemplate" OnValidSubmit="@generate">
+    <EditForm Model="@dappercodetemplate" OnValidSubmit="@generate">
         <div class="lefthalf">
             <table>
                 <tr>
                     <td>Namespace:</td>
                     <td>
-                        <input type="text" @bind="@codetemplate.NamespaceName" required /><br />
+                        <input type="text" @bind="@dappercodetemplate.NamespaceName" required /><br />
 
                     </td>
                 </tr>
@@ -38,7 +38,7 @@
         <div class="righthalf">
             <p>Paste the SQL CREATE TABLE code below so this app can see the table name, field names, and data types. Just from CREATE TABLE to the end of the last column definition.</p>
 
-        <textarea rows="10" @bind="@codetemplate.TableDesign" required>
+        <textarea rows="10" @bind="@dappercodetemplate.TableDesign" required>
         </textarea>
 
         <p style="text-align:center">
@@ -48,9 +48,10 @@
         </div>
     </EditForm>
 </div>
+
 <code>
     <pre>
-    @codetemplate.GeneratedCode
+    @dappercodetemplate.GeneratedCode
     </pre>
 </code>
 <p style="clear:both;">To get the SQL Server CREATE TABLE statement in SQL Server Management Studio or SQL Server Object Explorer or a similar tool, right-click the table name, choose Script As > CREATE To > New Query Window and select the SQL code from CREATE TABLE to the end of the last column definition. If you get it wrong, this won't work.</p>
@@ -59,15 +60,21 @@
 </p>
 
 
-@code{ Codetemplate codetemplate = new Codetemplate();
-    string? tablename, primaryKey, sqlfieldsinsert1, sqlfieldsinsert2, modelfield, parametersadd, inputtag, sqldelete, sqlselectlist, sqlselectone, sqlinsert, sqlupdate, sqlsearch, sqldaterange, sqlDateSearchWhereClause, shortfieldlist;
+@code{
+    DapperCodeTemplate dappercodetemplate = new ();
+    string? tablename, primaryKey, sqlfieldsinsert1, sqlfieldsinsert2, modelfield, parametersadd, sqldelete, sqlselectlist, sqlselectone, sqlinsert, sqlupdate, sqlsearch; //inputtag, sqldaterange, sqlDateSearchWhereClause, shortfieldlist;
     int iDateCounter = 0;
-    public string rawtemplate = System.IO.File.ReadAllText(@"DapperCodeGeneratorTemplate.txt");
+    public string rawtemplate = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        rawtemplate = System.IO.File.ReadAllText(@"DapperCodeGeneratorTemplate.txt");
+    }
+
     public void generate()
     {
-
-        string? nsname = codetemplate.NamespaceName;
-        string tableinfo = @codetemplate.TableDesign = null!;
+        string? nsname = dappercodetemplate.NamespaceName;
+        string? tableinfo = @dappercodetemplate.TableDesign;
         // Find the table name
         tableinfo = tableinfo.Replace("CREATE TABLE [dbo].[", "");
         // If there's anything after the last field definition, remove all that.
@@ -94,37 +101,29 @@
         {
             listname += "s";
         }
-        string fieldlist = @codetemplate.TableDesign;
+        string? fieldlist = @dappercodetemplate.TableDesign;
         int firstparen = tableinfo.IndexOf("(");
         tableinfo = tableinfo.Substring(firstparen + 1);
         tableinfo = tableinfo.Replace("\n", "").Replace("\t", "");
 
-
         var tablefields = NormalizeFieldNames(tableinfo, objectname);
 
-
-        rawtemplate = rawtemplate.Replace("@@OBJECT", objectname);
         rawtemplate = rawtemplate.Replace("@@NAMESPACE", nsname);
         rawtemplate = rawtemplate.Replace("@@CLASSNAME", classname);
         rawtemplate = rawtemplate.Replace("@@CLASSService", classservice);
         rawtemplate = rawtemplate.Replace("@@objectname", objectname);
-        rawtemplate = rawtemplate.Replace("@@LISTPAGENAME", objectname + "list");
-        rawtemplate = rawtemplate.Replace("@@REPORTPAGENAME", objectname + "report");
         rawtemplate = rawtemplate.Replace("@@objectlist", listname);
-        rawtemplate = rawtemplate.Replace("@@listpagename", listpagename);
 
-        @codetemplate.GeneratedCode = rawtemplate;
+        @dappercodetemplate.GeneratedCode = rawtemplate;
     }
 
     public List<Tablefield> NormalizeFieldNames(string rawtext, string objectname)
     {
-        Tablefield tblfield = new Tablefield();
-        List<Tablefield> fieldlist = new List<Tablefield>();
+        Tablefield? tblfield = new ();
+        List<Tablefield> fieldlist = new ();
         string[] fldnames = rawtext.Split("NULL,");
-        string tableheadings = "";
-        string tablerows = "";
-        string confirmdeleterows = "";
         string parametersAddUpdateOnly = string.Empty;
+
         int iCounter = 1;
         foreach (var fld in fldnames)
         {
@@ -133,16 +132,9 @@
             {
                 string sfldname = working.Substring(1, working.IndexOf("]") - 1);
                 sfldname = char.ToUpper(sfldname[0]) + sfldname.Substring(1);
-                // Primary key column plus 6 more fields...just a wild guess.
-                if (iCounter > 1 && iCounter < 7)
-                {
-                    tableheadings += "<th>" + sfldname + "</th>";
-                    tablerows += "<td>@" + objectname + "." + sfldname + "</td>";
-                    shortfieldlist += sfldname + ", ";
-                }
 
                 bool isRequired = (working.Substring(working.Length - 4) == " NOT");
-                // Isolate the data time
+                // Isolate the data type
                 string datatype = working.Substring(working.IndexOf("]") + 2);
                 datatype = datatype.Replace("IDENTITY(1,1) ", "");
                 datatype = datatype.Replace("IDENTITY (1, 1) ", "");
@@ -151,8 +143,9 @@
 
                 //Remove the parens and number (if any) from the datatype.
                 string temptype = RemoveNonAlpha(datatype).Trim().ToLower();
-                string nettype = TypeMapper.GetNetType(temptype);
+                string? nettype = TypeMapper.GetNetType(temptype);
                 string? dbtype = TypeMapper.GetDBType(temptype);
+
                 // If it's any kind of "char" field, grab the length
                 int maxlength = 0;
                 if (datatype.Contains("char"))
@@ -192,8 +185,16 @@
             {
                 modelfield += "[StringLength(" + fld.Length + ")]\n";
             }
-            modelfield += "public " + fld.Codetype + " " + fld.Fieldname + " { get; set; }\n";
+            if(fld.IsRequired == true && fld.Codetype == "string")
+            {
+                modelfield += "public " + fld.Codetype + " " + fld.Fieldname + " { get; set; } = String.Empty;\n";
+            }
+            else
+            {
+                modelfield += "public " + fld.Codetype + " " + fld.Fieldname + " { get; set; }\n";
+            }            
             sproc_allparams += "@" + fld.Fieldname + " " + fld.SQLtype + ",\n";
+
             // The first field is assumed to be the key, so we don't include that on paramters for Insert sproc
             if (iCounter != 1)
             {
@@ -208,98 +209,28 @@
                 // The Update stored proc requires the primary key as a parameter, insert doesn't.
                 parametersAddUpdateOnly = "parameters.Add(" + Convert.ToChar(34) + fld.Fieldname + Convert.ToChar(34) + ", " + objectname + "." + fld.Fieldname + ", DbType." + fld.DBtype + ");\n";
                 sqldelete = "DELETE FROM " + tablename + " WHERE " + primaryKey + " = @" + primaryKey;
-                sqlselectlist = "SELECT TOP 30 " + primaryKey;
+                sqlselectlist = "SELECT * ";
                 sqlselectone = "SELECT " + primaryKey;
                 sqlinsert = "INSERT INTO " + tablename + "(";
-                sqlupdate = "UPDATE " + tablename + " SET ";
-                //Remove comma and space from end of shortfieldlist.
-                sqlsearch = "SELECT " + shortfieldlist.Substring(0,shortfieldlist.Length -2) + " FROM " + tablename + " WHERE ";
-                sqldaterange = "SELECT " + shortfieldlist.Substring(0, shortfieldlist.Length - 2) + " FROM " + tablename + " WHERE ";
+                sqlupdate = "UPDATE " + tablename + " SET ";                
             }
 
             // ===================================================================================================== Input tags for adding and editing, never the primary key.
             if (iCounter > 1)
             {
-                parametersadd += "parameters.Add(" + Convert.ToChar(34) + fld.Fieldname + Convert.ToChar(34) + ", " + objectname + "." + fld.Fieldname + ", DbType." + fld.DBtype + ");\n";
-                //inputtag += "<tr><td>" + fld.Fieldname + ":</td><td><input type=" + Convert.ToChar(34) + TypeMapper.GetHtmlType(fld.Codetype) + Convert.ToChar(34) + " @bind=" + Convert.ToChar(34) + objectname + "." + fld.Fieldname + Convert.ToChar(34);
+                parametersadd += "parameters.Add(" + Convert.ToChar(34) + fld.Fieldname + Convert.ToChar(34) + ", " + objectname + "." + fld.Fieldname + ", DbType." + fld.DBtype + ");\n";               
                 cappedType = TypeMapper.GetHtmlType(fld.Codetype);
                 cappedType = char.ToUpper(cappedType[0]) + cappedType.Substring(1);
                 //If the data type in SQL is Text, then use TextArea rather than Input'
                 if (fld.SQLtype == "text") {
                     cappedType = "TextArea";
                 }
-                if (iCounter % 2 == 0 )
-                {
-                    inputtag += "<div class='row'>\n";
-                }
-                inputtag += "<div class='col-2'>\n<label for = '" + fld.Fieldname + "'>" + fld.Fieldname + ":</label>\n</div>\n<div class='col-4'>\n<Input" + cappedType + " @bind-Value = " + Convert.ToChar(34) + objectname + "." + fld.Fieldname + Convert.ToChar(34) + " class='form-control'";
-
-                if (fld.SQLtype.Contains("varchar") || fld.SQLtype.Contains("text"))
-                {
-                    inputtag += " style='width:100%;'";
-                }
-                //The date ranges don't work in the model, so adding here.
-                if (fld.SQLtype.Contains("date"))
-                {
-                    inputtag += " min=" + Convert.ToChar(34) + "1753-01-01" + Convert.ToChar(34) + " max=" + Convert.ToChar(34) + "9999-12-31" + Convert.ToChar(34);
-                }
-
-                inputtag += " id = '" + fld.Fieldname + "'/></div>\n";
-                if (iCounter % 2 != 0)
-                {
-                    inputtag += "</div>\n";
-                }
-                //if (TypeMapper.GetHtmlType(fld.Codetype) == "date")
-                //{
-                //    inputtag += " min=" + Convert.ToChar(34) + "1753-01-01" + Convert.ToChar(34) + " max=" + Convert.ToChar(34) + "9999-12-31" + Convert.ToChar(34);
-                //}
-                //if (fld.Length > 0)
-                //{
-                //    inputtag += " maxlength=" + fld.Length.ToString();
-                //}
-                //if (fld.Codetype == "decimal")
-                //{
-                //    inputtag += " step=" + Convert.ToChar(34) + "any" + Convert.ToChar(34);
-                //}
-                //if (fld.IsRequired)
-                //{
-                //    inputtag += " required ";
-                //}
-                //inputtag += "></td></tr>";
-                confirmdeleterows += "<div class='form-group'>" + fld.Fieldname + ":@" + objectname + "." + fld.Fieldname + "</div>\n";
-                // For the initial List page and date search I show ony the first five fields, you
-                // may need to adjust in your own app.
-                if (iCounter < 7) {
-                    sqlselectlist += ", " + fld.Fieldname;
-                }
+                
                 sqlselectone += ", " + fld.Fieldname;
                 sqlfieldsinsert1 += fld.Fieldname + ", ";
                 sqlfieldsinsert2 += "@" + fld.Fieldname + ", ";
                 sqlupdate += fld.Fieldname + " = @" + fld.Fieldname + ", ";
-                //convert dates to string for Like search
-                if (fld.SQLtype.Contains("date"))
-                {
-                    //Isolate the first date or datetime field
-                    iDateCounter += 1;
-                    if (iDateCounter == 1)
-                    {
-                        sqlDateSearchWhereClause = " CAST(" + fld.Fieldname + " AS Date) Between @startDate AND @endDate";
-                    }
-                    //sqlsearchflds += "CONVERT(varchar(12)," + fld.Fieldname + ",101) AS " + fld.Fieldname + ", ";
-                    sqlsearch += "CONVERT(varchar(12)," + fld.Fieldname + ",101) LIKE + '%' + @param + '%' OR ";
-                }
-                //convert numbers to string for like search
-                if (fld.SQLtype.Contains("int") || fld.SQLtype.Contains("decimal") || fld.SQLtype.Contains("money"))
-                {
-                    //sqlsearchflds += "CAST(" + fld.Fieldname + " AS varchar(20)) AS " + fld.Fieldname + ",";
-                    sqlsearch += "CAST(" + fld.Fieldname + " AS varchar(20)) LIKE '%' + @param + '%' OR ";
-                }
-                //No convertsion for text fields
-                if (fld.SQLtype.Contains("text") || fld.SQLtype.Contains("char"))
-                {
-                    //sqlsearchflds += fld.Fieldname + ",";
-                    sqlsearch += fld.Fieldname + " LIKE '%' + @param + '%' OR ";
-                }
+                
             }
             iCounter += 1;
         }
@@ -314,10 +245,7 @@
         rawtemplate = rawtemplate.Replace("@@PARAMETERADDUPDATEONLY", parametersAddUpdateOnly);
         rawtemplate = rawtemplate.Replace("@@PARAMETERSADD", parametersadd);
         rawtemplate = rawtemplate.Replace("@@PRIMARYKEY", primaryKey);
-        rawtemplate = rawtemplate.Replace("@@INPUTONEROWS", inputtag);
-        rawtemplate = rawtemplate.Replace("@@FIELDNAMESTABLEHEADING", tableheadings);
-        rawtemplate = rawtemplate.Replace("@@FIELDNAMESTABLEROW", tablerows);
-        rawtemplate = rawtemplate.Replace("@@CONFIRMDELETEROWS", confirmdeleterows);
+
         //Modification by CJB 
         rawtemplate = rawtemplate.Replace("@@DBTYPE", mydbtype);
 
@@ -329,14 +257,12 @@
         sqlupdate += " WHERE " + primaryKey + " = @" + primaryKey;
         sqlselectlist += " FROM " + tablename + " ORDER BY " + primaryKey + " DESC";
         sqlselectone += " FROM " + tablename + " WHERE " + primaryKey + "= @" + primaryKey;
-        rawtemplate = rawtemplate.Replace("@@SQLINSERT", sqlinsert);
-        rawtemplate = rawtemplate.Replace("@@SQLUPDATE", sqlupdate);
 
-        rawtemplate = rawtemplate.Replace("@@SQLSEARCH", sqlsearch.Substring(0, sqlsearch.Length-4));
+        rawtemplate = rawtemplate.Replace("@@SQLINSERT", sqlinsert);
+        rawtemplate = rawtemplate.Replace("@@SQLUPDATE", sqlupdate);        
         rawtemplate = rawtemplate.Replace("@@SQLSELECTLIST", sqlselectlist);
         rawtemplate = rawtemplate.Replace("@@SQLSELECTONE", sqlselectone);
         rawtemplate = rawtemplate.Replace("@@SQLDELETE", sqldelete);
-        rawtemplate = rawtemplate.Replace("@@SQLDATERANGE", sqldaterange + sqlDateSearchWhereClause);
         rawtemplate = rawtemplate.Replace("@@TABLENAME",tablename);
         return fieldlist;
     }
@@ -351,4 +277,5 @@
     public string RemoveAlpha(string input)
     {
         return Regex.Replace(input, @"[^0-9.]", string.Empty);
-    } }
+    } 
+}
