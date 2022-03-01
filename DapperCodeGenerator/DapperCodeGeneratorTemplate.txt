@@ -9,7 +9,7 @@
       appsettings.json:
 
       "ConnectionStrings":{
-         "DefaultConnection" : "Your connection string here"
+         "Default" : "Your connection string here"
       }
 
 
@@ -116,7 +116,7 @@ namespace @@NAMESPACE.Data
             _configuration = configuration;
         }
 
-        public string connectionId = "DefaultConnection";
+        public string connectionId = "Default";
         
         // Add (create) a @@CLASSNAME table row (SQL Insert)
         public async Task<bool> @@CLASSNAMEInsert(@@CLASSNAME @@objectname)
@@ -143,7 +143,7 @@ namespace @@NAMESPACE.Data
         }
       	
         // Get one @@objectname based on its @@CLASSNAMEID (SQL Select)
-        public async Task<@@CLASSNAME> @@CLASSNAME_GetOne(@@DBTYPE @@@PK)
+        public async Task<@@CLASSNAME> @@CLASSNAMEGetOne(@@DBTYPE @@@PK)
         {
             @@CLASSNAME @@objectname = new @@CLASSNAME();
             var parameters = new DynamicParameters();
@@ -195,7 +195,7 @@ namespace @@NAMESPACE.Data
     {
         Task<bool> @@CLASSNAMEInsert(@@CLASSNAME @@objectname);
         Task<IEnumerable<@@CLASSNAME>> @@CLASSNAMEList();        
-        Task<@@CLASSNAME> @@CLASSNAME_GetOne(@@DBTYPE @@PK);
+        Task<@@CLASSNAME> @@CLASSNAMEGetOne(@@DBTYPE @@PK);
         Task<bool> @@CLASSNAMEUpdate(@@CLASSNAME @@objectname);
         Task<bool> @@CLASSNAMEDelete(@@DBTYPE @@PK);
     }
